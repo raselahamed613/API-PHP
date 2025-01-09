@@ -8,7 +8,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 // Secret key for JWT
-$secret_key = "your_secret_key";
+$secret_key = "myIoT";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Retrieve POST data
@@ -22,16 +22,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check if the user input is email or mobile
     $is_email = filter_var($user_input, FILTER_VALIDATE_EMAIL);
-
+    
     $sql = $is_email
-        ? "SELECT id, email, password, device_id FROM users WHERE email = :user_input"
-        : "SELECT id, mobile, password, device_id FROM users WHERE mobile = :user_input";
+    ? "SELECT id, email, password, device_id FROM users WHERE email = ?"
+    : "SELECT id, mobile, password, device_id FROM users WHERE mobile = ?";
+    // $sql = $is_email
+    //     ? "SELECT id, email, password, device_id FROM users WHERE email = :user_input"
+    //     : "SELECT id, mobile, password, device_id FROM users WHERE mobile = :user_input";
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':user_input' => $user_input]);
+    // $stmt = $pdo->prepare($sql);
+    // $stmt->execute([':user_input' => $user_input]);
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        // die(json_encode(['error' => 'Failed to prepare the SQL statement: ' . $conn->error]));
+        echo json_encode(['status' => 'error', 'message' => 'Failed to prepare the SQL statement.']);
+        exit;
+    }
 
-    if ($stmt->rowCount() > 0) {
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Bind the parameter
+    $stmt->bind_param("s", $user_input);
+
+    // Execute the query
+    $stmt->execute();
+
+    // if ($stmt->rowCount() > 0) {
+    //     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+      // Get the result
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $user = $result->fetch_assoc();
 
         // Verify the password
         if (password_verify($password, $user['password'])) {
@@ -51,14 +71,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $jwt = JWT::encode($payload, $secret_key, 'HS256');
 
             // Redirect with success message
-            header("Location: login.php?message=" . urlencode("Login successful! Your token: $jwt"));
+            // header("Location: login.php?message=" . urlencode("Login successful! Your token: $jwt"));
+            echo json_encode(['status' => 'success', 'message' => 'Login successful.', 'token' => $jwt]);
         } else {
-            header("Location: login.php?message=" . urlencode('Invalid password.'));
+            // header("Location: login.php?message=" . urlencode('Invalid password.'));
+            echo json_encode(['status' => 'error', 'message' => 'Invalid password.']);
         }
     } else {
-        header("Location: login.php?message=" . urlencode('User not found.'));
+        // header("Location: login.php?message=" . urlencode('User not found.'));
+        echo json_encode(['status' => 'error', 'message' => 'User not found.']);
     }
 } else {
-    header("Location: login.php?message=" . urlencode('Invalid request method.'));
+    // header("Location: login.php?message=" . urlencode('Invalid request method.'));
+    echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
 }
 ?>

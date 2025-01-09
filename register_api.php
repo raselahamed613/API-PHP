@@ -1,49 +1,42 @@
 <?php
-require 'db_connection.php'; // Include database connection
+// Include database connection
+require 'db_connection.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Decode the JSON data sent by the front-end
-    $data = json_decode(file_get_contents('php://input'), true);
+    // Get form data from $_POST
+    $username = $_POST['username'] ?? null;
+    $password = $_POST['password'] ?? null;
+    $email = $_POST['email'] ?? null;
+    $mobile = $_POST['mobile'] ?? null;
+    $device_id = $_POST['device_id'] ?? null;
+    $additional = $_POST['additional'] ?? null;
 
     // Validate input
-    if (!isset($data['username'], $data['password'], $data['email'], $data['mobile'], $data['device_id'])) {
+    if (!$username || !$password || !$email || !$mobile || !$device_id) {
         echo json_encode(['error' => 'Missing required fields']);
         exit;
     }
 
-    $username = $data['username'];
-    $password = $data['password'];
-    $email = $data['email'];
-    $mobile = $data['mobile'];
-    $additional = isset($data['additional']) ? $data['additional'] : null;
-    $device_id = $data['device_id'];
-
-    // Hash the password for security
+    // Hash the password
     $hashed_password = password_hash($password, PASSWORD_BCRYPT);
 
     // Insert into the database
     $sql = "INSERT INTO users (username, password, email, mobile, additional, device_id) 
-            VALUES (:username, :password, :email, :mobile, :additional, :device_id)";
-    $stmt = $pdo->prepare($sql);
+            VALUES (?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
 
     try {
-        $stmt->execute([
-            ':username' => $username,
-            ':password' => $hashed_password,
-            ':email' => $email,
-            ':mobile' => $mobile,
-            ':additional' => $additional,
-            ':device_id' => $device_id,
-        ]);
+        $stmt->bind_param("ssssss", $username, $hashed_password, $email, $mobile, $additional, $device_id);
+        $stmt->execute();
         echo json_encode(['message' => 'User registered successfully!']);
-    } catch (PDOException $e) {
-        if ($e->getCode() == 23000) { // Duplicate entry error
-            echo json_encode(['error' => 'Username or email already exists']);
-        } else {
-            echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
-        }
+    } catch (Exception $e) {
+        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['error' => 'Invalid request method']);
 }
+
+
+// Close the database connection
+$conn->close();
 ?>
