@@ -39,7 +39,7 @@
                 device_id: document.getElementById('device_id').value
             };
 
-            const response = await fetch('http://localhost/user_api/register_api.php', {
+            const response = await fetch('http://localhost/register_api.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

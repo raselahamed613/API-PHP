@@ -40,11 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 "iss" => "http://localhost", // Issuer
                 "aud" => "http://localhost", // Audience
                 "iat" => time(),             // Issued at
-                "exp" => time() + 60
+                "exp" => time() + 60,
                 // "exp" => time() + 3600,      // Expiration time (1 hour)
                 "data" => [
                     "id" => $user['id'],
-                    "device_id" => $user['device_id'],
+                    "device_id" => $user['device_id']
                 ]
             ];
 
