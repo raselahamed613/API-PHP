@@ -49,50 +49,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Fetch sensor and motor statuses
-    $statusQuery = "SELECT component, status FROM device_status WHERE device_id = ?";
+    // $statusQuery = "SELECT component, status FROM sensor_data WHERE device_id = ?";
+    // $statusQuery = "SELECT lowSensor, midLowSensor, midSensor, fullSensor, motorState FROM sensor_data WHERE device_id = ?";
+    $statusQuery = "SELECT lowSensor, midLowSensor, midSensor, fullSensor, motorState 
+                FROM sensor_data 
+                WHERE device_id = ? 
+                ORDER BY id DESC 
+                LIMIT 1";
+
     $stmt = $conn->prepare($statusQuery);
     $stmt->bind_param("s", $device_id);
-    $stmt->execute();za
+    $stmt->execute();
     $statusResult = $stmt->get_result();
 
     $statuses = [];
-    while ($row = $statusResult->fetch_assoc()) {
-        $statuses[$row['component']] = $row['status'];
+    // while ($row = $statusResult->fetch_assoc()) {
+    //     $statuses[$row['component']] = $row['status'];
+    // }
+    if ($row = $statusResult->fetch_assoc()) {
+        $statuses['lowsensor'] = $row['lowSensor'];
+        $statuses['midlow_sensor'] = $row['midLowSensor'];
+        $statuses['mid_sensor'] = $row['midSensor'];
+        $statuses['fullsensor'] = $row['fullSensor'];
+        $statuses['motor_status'] = $row['motorState'];
+    }else {
+        $lowSensor = "unknown";
+        $midLowSensor = "unknown";
+        $midSensor = "unknown";
+        $fullSensor = "unknown";
+        $motorStatus = "unknown";
     }
-
     // Fetch motor on/off times
-    $motorQuery = "SELECT on_time, off_time FROM motor_activity WHERE device_id = ? AND on_time >= NOW() - INTERVAL 1 DAY";
-    $stmt = $conn->prepare($motorQuery);
-    $stmt->bind_param("s", $device_id);
-    $stmt->execute();
-    $motorResult = $stmt->get_result();
+    // $motorQuery = "SELECT on_time, off_time FROM motor_activity WHERE device_id = ? AND on_time >= NOW() - INTERVAL 1 DAY";
+    // $stmt = $conn->prepare($motorQuery);
+    // $stmt->bind_param("s", $device_id);
+    // $stmt->execute();
+    // $motorResult = $stmt->get_result();
 
-    $totalOnTime = 0;
-    $motorLastOnTime = null;
+    // $totalOnTime = 0;
+    // $motorLastOnTime = null;
 
-    while ($row = $motorResult->fetch_assoc()) {
-        $onTime = strtotime($row['on_time']);
-        $offTime = $row['off_time'] ? strtotime($row['off_time']) : time();
-        $totalOnTime += ($offTime - $onTime);
+    // while ($row = $motorResult->fetch_assoc()) {
+    //     $onTime = strtotime($row['on_time']);
+    //     $offTime = $row['off_time'] ? strtotime($row['off_time']) : time();
+    //     $totalOnTime += ($offTime - $onTime);
 
-        if (!$motorLastOnTime || $onTime > strtotime($motorLastOnTime)) {
-            $motorLastOnTime = $row['on_time'];
-        }
-    }
+    //     if (!$motorLastOnTime || $onTime > strtotime($motorLastOnTime)) {
+    //         $motorLastOnTime = $row['on_time'];
+    //     }
+    // }
 
-    // Calculate average on time
-    $averageOnTime = $totalOnTime > 0 ? gmdate("H:i:s", $totalOnTime / $motorResult->num_rows) : "00:00:00";
+    // // Calculate average on time
+    // $averageOnTime = $totalOnTime > 0 ? gmdate("H:i:s", $totalOnTime / $motorResult->num_rows) : "00:00:00";
 
-    // Convert total on time to HH:MM:SS
-    $last24HourTotalOnTime = gmdate("H:i:s", $totalOnTime);
-
+    // // Convert total on time to HH:MM:SS
+    // $last24HourTotalOnTime = gmdate("H:i:s", $totalOnTime);
+    //dume value
+    $motorLastOnTime = 5;
+    $averageOnTime = 10;
+    $last24HourTotalOnTime  = 1;
+    //////
     // Prepare the response
     $response = [
         'status' => 'success',
         'message' => 'Device data retrieved successfully.',
         'data' => [
             'lowsensor' => $statuses['lowsensor'] ?? 'unknown',
-            'midlow' => $statuses['midlow'] ?? 'unknown',
+            'midlow_sensor' => $statuses['midlow_sensor'] ?? 'unknown',
             'mid_sensor' => $statuses['mid_sensor'] ?? 'unknown',
             'fullsensor' => $statuses['fullsensor'] ?? 'unknown',
             'motor_status' => $statuses['motor_status'] ?? 'unknown',
