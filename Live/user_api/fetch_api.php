@@ -1,6 +1,22 @@
 <?php
-require 'db_connection.php';
+// require 'db_connection.php';
+//DB Connection
 
+$servername = "localhost";
+
+$username = "root"; // your database username
+
+$password = "Rasel@24"; // your database password
+
+$dbname = "pump_data";
+
+
+
+// Create connection
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+///////////////
 // Secret key for JWT
 $secret_key = "myIoT";
 
@@ -110,22 +126,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $last24HourTotalOnTime  = 1;
     //////
     // Prepare the response
-    $response = [
-        'status' => 'success',
-        'message' => 'Device data retrieved successfully.',
-        'data' => [
-            'lowsensor' => $statuses['lowsensor'] ?? 'unknown',
-            'midlow_sensor' => $statuses['midlow_sensor'] ?? 'unknown',
-            'mid_sensor' => $statuses['mid_sensor'] ?? 'unknown',
-            'fullsensor' => $statuses['fullsensor'] ?? 'unknown',
-            'motor_status' => $statuses['motor_status'] ?? 'unknown',
-            'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
-            'average_on_time' => $averageOnTime,
-            'last_24_hour_total_on_time' => $last24HourTotalOnTime
-        ]
-    ];
+    // $response = [
+    //     'status' => 'success',
+    //     'message' => 'Device data retrieved successfully.',
+    //     'data' => [
+    //         'lowsensor' => $statuses['lowsensor'] ?? 'unknown',
+    //         'midlow_sensor' => $statuses['midlow_sensor'] ?? 'unknown',
+    //         'mid_sensor' => $statuses['mid_sensor'] ?? 'unknown',
+    //         'fullsensor' => $statuses['fullsensor'] ?? 'unknown',
+    //         'motor_status' => $statuses['motor_status'] ?? 'unknown',
+    //         'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
+    //         'average_on_time' => $averageOnTime,
+    //         'last_24_hour_total_on_time' => $last24HourTotalOnTime
+    //     ]
+    // ];
+    $data = [
 
-    echo json_encode($response);
+        'data' => [
+
+            'MeterInfo' => [
+
+                [
+
+                    'Key' => 'Low Sensor',
+
+                    'Value' => $statuses['lowsensor'] ?? 'unknown',
+
+                    'Bgcolor' => '#0000FF', // Add background color if needed
+
+                    'Textcolor' => '#7393B3', // Add text color if needed
+
+                ],
+
+                [
+
+                    'Key' => 'Mid Low Sensor',
+
+                    'Value' => $statuses['midlow_sensor'] ?? 'unknown',
+
+                    'Bgcolor' => '#0000FF', // Add background color if needed
+
+                    'Textcolor' => '#7393B3', // Add text color if needed
+
+                ],
+
+                [
+
+                    'Key' => 'Mid Sensor',
+
+                    'Value' => $statuses['mid_sensor'] ?? 'unknown',
+
+                    'Bgcolor' => '#0000FF', // Add background color if needed
+
+                    'Textcolor' => '#7393B3', // Add text color if needed
+
+                ],
+
+                [
+
+                    'Key' => 'Full Sensor',
+
+                    'Value' => $statuses['fullsensor'] ?? 'unknown',
+
+                    'Bgcolor' => '#0000FF', // Add background color if needed
+
+                    'Textcolor' => '#7393B3', // Add text color if needed
+
+                ],
+
+                [
+
+                    'Key' => 'Motor Status',
+
+                    'Value' => $statuses['motor_status'] ?? 'unknown',
+
+                    'Bgcolor' => '#0000FF', // Add background color if needed
+
+                    'Textcolor' => '#7393B3', // Add text color if needed
+
+                ],
+
+                
+
+                'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
+
+                'average_on_time' => $averageOnTime,
+
+                'last_24_hour_total_on_time' => $last24HourTotalOnTime
+
+            ],
+
+        ],
+
+    ];
+    
+
+    echo json_encode($data);
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
 }
