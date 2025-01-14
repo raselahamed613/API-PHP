@@ -206,15 +206,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 ],
 
-                
-
-                'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
-
-                'average_on_time' => $averageOnTime,
-
-                'last_24_hour_total_on_time' => $last24HourTotalOnTime
-
             ],
+            'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
+
+            'average_on_time' => $averageOnTime,
+
+            'last_24_hour_total_on_time' => $last24HourTotalOnTime
 
         ],
 
