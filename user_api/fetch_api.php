@@ -1,6 +1,14 @@
 <?php
-require 'db_connection.php';
+//require 'db_connection.php';
+//DB Connection
+$servername = "localhost";
+$username = "root"; // your database username
+$password = "Rasel@24"; // your database password
+$dbname = "pump_data";
 
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+///////////////
 // Secret key for JWT
 $secret_key = "myIoT";
 
@@ -16,20 +24,26 @@ function decodeJWT($jwt, $secret_key)
 }
 
 function getBearerToken() {
-    $headers = apache_request_headers(); // Get all headers
-
-    if (isset($headers['Authorization'])) {
+    //$headers = apache_request_headers(); // Get all headers
+    $headers = getallheaders();
+    //if (isset($headers['Authorization'])) {
         // Extract the Bearer token from the Authorization header
-        $matches = [];
-        preg_match('/Bearer (.+)/', $headers['Authorization'], $matches);
-        return $matches[1] ?? null; // Return the token, or null if not found
+      //  $matches = [];
+        //preg_match('/Bearer (.+)/', $headers['Authorization'], $matches);
+        //return $matches[1] ?? null; // Return the token, or null if not found
+   // }
+   if (isset($headers['Authorization'])) {
+        if (preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
+            return $matches[1];
+        }
     }
     return null; // Return null if Authorization header is not present
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    //$jwt = $_POST['token'] ?? '';
-    $jwt = getBearerToken() ?? '';
+    $jwt = $_POST['token'] ?? '';
+    //$jwt = getBearerToken() ?? '';
+    
    // print_r($jwt);
     if (empty($jwt)) {
         echo json_encode(['status' => 'error', 'message' => 'Token is required.']);
@@ -49,60 +63,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Fetch sensor and motor statuses
-    $statusQuery = "SELECT component, status FROM device_status WHERE device_id = ?";
+    // $statusQuery = "SELECT component, status FROM sensor_data WHERE device_id = ?";
+    // $statusQuery = "SELECT lowSensor, midLowSensor, midSensor, fullSensor, motorState FROM sensor_data WHERE device_id = ?";
+    $statusQuery = "SELECT lowSensor, midLowSensor, midSensor, fullSensor, motorState 
+                FROM sensor_data 
+                WHERE device_id = ? 
+                ORDER BY id DESC 
+                LIMIT 1";
+
     $stmt = $conn->prepare($statusQuery);
     $stmt->bind_param("s", $device_id);
-    $stmt->execute();za
-    $statusResult = $stmt->get_result();
-
-    $statuses = [];
-    while ($row = $statusResult->fetch_assoc()) {
-        $statuses[$row['component']] = $row['status'];
-    }
-
-    // Fetch motor on/off times
-    $motorQuery = "SELECT on_time, off_time FROM motor_activity WHERE device_id = ? AND on_time >= NOW() - INTERVAL 1 DAY";
-    $stmt = $conn->prepare($motorQuery);
-    $stmt->bind_param("s", $device_id);
     $stmt->execute();
-    $motorResult = $stmt->get_result();
-
-    $totalOnTime = 0;
-    $motorLastOnTime = null;
-
-    while ($row = $motorResult->fetch_assoc()) {
-        $onTime = strtotime($row['on_time']);
-        $offTime = $row['off_time'] ? strtotime($row['off_time']) : time();
-        $totalOnTime += ($offTime - $onTime);
-
-        if (!$motorLastOnTime || $onTime > strtotime($motorLastOnTime)) {
-            $motorLastOnTime = $row['on_time'];
-        }
+    $statusResult = $stmt->get_result();
+    //print_r($statusResult);
+    $statuses = [];
+    // while ($row = $statusResult->fetch_assoc()) {
+    //     $statuses[$row['component']] = $row['status'];
+    // }
+    if ($row = $statusResult->fetch_assoc()) {
+        $statuses['lowsensor'] = $row['lowSensor'];
+        $statuses['midlow_sensor'] = $row['midLowSensor'];
+        $statuses['mid_sensor'] = $row['midSensor'];
+        $statuses['fullsensor'] = $row['fullSensor'];
+        $statuses['motor_status'] = $row['motorState'];
+    }else {
+        $lowSensor = "unknown";
+        $midLowSensor = "unknown";
+        $midSensor = "unknown";
+        $fullSensor = "unknown";
+        $motorStatus = "unknown";
     }
+    // Fetch motor on/off times
+   // SELECT COUNT(*) AS on_cycles 
+    //FROM sensor_data 
+    //WHERE device_id = ? AND motorState = 1 AND timestamp >= NOW() - INTERVAL 1 DAY;
 
-    // Calculate average on time
-    $averageOnTime = $totalOnTime > 0 ? gmdate("H:i:s", $totalOnTime / $motorResult->num_rows) : "00:00:00";
+    // $motorQuery = "SELECT on_time, off_time FROM motor_activity WHERE device_id = ? AND on_time >= NOW() - INTERVAL 1 DAY";
+    // $stmt = $conn->prepare($motorQuery);
+    // $stmt->bind_param("s", $device_id);
+    // $stmt->execute();
+    // $motorResult = $stmt->get_result();
 
-    // Convert total on time to HH:MM:SS
-    $last24HourTotalOnTime = gmdate("H:i:s", $totalOnTime);
+    // $totalOnTime = 0;
+    // $motorLastOnTime = null;
 
+    // while ($row = $motorResult->fetch_assoc()) {
+    //     $onTime = strtotime($row['on_time']);
+    //     $offTime = $row['off_time'] ? strtotime($row['off_time']) : time();
+    //     $totalOnTime += ($offTime - $onTime);
+
+    //     if (!$motorLastOnTime || $onTime > strtotime($motorLastOnTime)) {
+    //         $motorLastOnTime = $row['on_time'];
+    //     }
+    // }
+
+    // // Calculate average on time
+    // $averageOnTime = $totalOnTime > 0 ? gmdate("H:i:s", $totalOnTime / $motorResult->num_rows) : "00:00:00";
+
+    // // Convert total on time to HH:MM:SS
+    // $last24HourTotalOnTime = gmdate("H:i:s", $totalOnTime);
+    //dume value
+    $motorLastOnTimeQuery = "SELECT timestamp FROM sensor_data WHERE motorState = 1 ORDER BY timestamp DESC LIMIT 1";
+    $result =$conn->query($motorLastOnTimeQuery);
+    $motorLastOnTime = ($row = $result->fetch_assoc()) ? $row['timestamp'] : 'N/A';
+    
+    //print_r($result);
+    //$stmt = $conn->prepare($motorLastOnTimeQuery);
+    //$stmt->bind_param("s", $device_id);
+    //$stmt->execute();
+    //$motorLastOnTimeResult = $stmt->get_result();
+
+    $averageOnTime = "10:00:00";
+    $last24HourTotalOnTime  = "01:00:00";
+    //////
     // Prepare the response
-    $response = [
-        'status' => 'success',
-        'message' => 'Device data retrieved successfully.',
+     $data = [
         'data' => [
-            'lowsensor' => $statuses['lowsensor'] ?? 'unknown',
-            'midlow' => $statuses['midlow'] ?? 'unknown',
-            'mid_sensor' => $statuses['mid_sensor'] ?? 'unknown',
-            'fullsensor' => $statuses['fullsensor'] ?? 'unknown',
-            'motor_status' => $statuses['motor_status'] ?? 'unknown',
+            'MeterInfo' => [
+                    [
+                    'Key' => 'Full Sensor',
+                    'Value' => $statuses['fullsensor'] ?? 'unknown',
+                    'Bgcolor' => isset($statuses['fullsensor']) && $statuses['fullsensor'] == 0 ? '#37A41B' : '#FF0000', // Add background color if needed
+                    
+                    'Textcolor' => '#00FF00', // Add text color if needed
+                    ],
+                    [
+                    'Key' => 'Mid Sensor',
+                    'Value' => $statuses['mid_sensor'] ?? 'unknown',
+                    //'Bgcolor' => '#FF0000', // Add background color if needed
+                    'Bgcolor' => isset($statuses['mid_sensor']) && $statuses['mid_sensor'] == 0 ? '#37A41B' : '#FF0000',
+                    'Textcolor' => '#00FF00', // Add text color if needed
+                    ],
+                    [
+                    'Key' => 'Mid Low Sensor',
+                    'Value' => $statuses['midlow_sensor'] ?? 'unknown',
+                    //'Bgcolor' => '#FF0000', // Add background color if needed
+                    'Bgcolor' => isset($statuses['midlow_sensor']) && $statuses['midlow_sensor'] == 0 ? '#37A41B' : '#FF0000',
+                    'Textcolor' => '#00FF00', // Add text color if needed
+                    ],
+                    [
+                    'Key' => 'Low Sensor',
+                    'Value' => $statuses['lowsensor'] ?? 'unknown',
+                    //'Bgcolor' => '#FF0000', // Add background color if needed
+                    'Bgcolor' => isset($statuses['lowsensor']) && $statuses['lowsensor'] == 0 ? '#37A41B' : '#00FF00',
+
+                    'Textcolor' => '#00FF00', // Add text color if needed
+                    ],
+               
+                    [
+                    'Key' => 'Motor Status',
+                    'Value' => $statuses['motor_status'] ?? 'unknown',
+                    //'Bgcolor' => '#FF0000', // Add background color if needed
+                    'Bgcolor' => isset($statuses['motor_status']) && $statuses['motor_status'] == 0 ? '#37A41B' : '#FFFF00',
+                    'Textcolor' => '#000000', // Add text color if needed
+                    ],
+                
+            ],
             'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
             'average_on_time' => $averageOnTime,
-            'last_24_hour_total_on_time' => $last24HourTotalOnTime
-        ]
+            'last_24_hour_total_on_time' => $last24HourTotalOnTime,
+            'MotorStatus' =>[
+             'Key' => 'Motor Status',
+             'Value' => $statuses['motor_status'] ?? 'unknown',
+             'Bgcolor' => '#FF0000', // Add background color if needed
+             'Textcolor' => '#00FF00', // Add text color if needed
+            ]
+        ],
     ];
+    
 
-    echo json_encode($response);
+    echo json_encode($data);
+    
+    
+
+    //echo json_encode($response);
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
 }
