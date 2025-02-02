@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param("s", $device_id);
     $stmt->execute();
     $statusResult = $stmt->get_result();
-
+    //print_r($statusResult);
     $statuses = [];
     // while ($row = $statusResult->fetch_assoc()) {
     //     $statuses[$row['component']] = $row['status'];
@@ -94,6 +94,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $motorStatus = "unknown";
     }
     // Fetch motor on/off times
+   // SELECT COUNT(*) AS on_cycles 
+    //FROM sensor_data 
+    //WHERE device_id = ? AND motorState = 1 AND timestamp >= NOW() - INTERVAL 1 DAY;
+
     // $motorQuery = "SELECT on_time, off_time FROM motor_activity WHERE device_id = ? AND on_time >= NOW() - INTERVAL 1 DAY";
     // $stmt = $conn->prepare($motorQuery);
     // $stmt->bind_param("s", $device_id);
@@ -118,10 +122,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // // Convert total on time to HH:MM:SS
     // $last24HourTotalOnTime = gmdate("H:i:s", $totalOnTime);
-    //dume value
-    $motorLastOnTime = 5;
-    $averageOnTime = 10;
-    $last24HourTotalOnTime  = 1;
+    /*/dume value
+    $motorLastOnTimeQuery = "SELECT timestamp FROM sensor_data WHERE motorState = 1 ORDER BY timestamp DESC LIMIT 1";
+    $result =$conn->query($motorLastOnTimeQuery);
+    //$motorLastOnTime = ($row = $result->fetch_assoc()) ? $row['timestamp'] : 'N/A';
+    if ($result && $row = $result->fetch_assoc()) {
+    $motorLastOnTime = $row['timestamp'];
+    echo "Database Time: " . $motorLastOnTime . "<br>";
+    echo "Server Time: " . date("H:i:s") . "<br>";
+    //print_r($motorLastOnTime);
+    // Convert to time ago format
+    $timeAgo = time() - strtotime($motorLastOnTime); // Get difference in seconds
+    echo "Time Difference (Seconds): " . $timeAgo;
+    if ($timeAgo < 60) {
+        $timeAgoText = "$timeAgo seconds ago";
+    } elseif ($timeAgo < 3600) {
+        $timeAgoText = floor($timeAgo / 60) . " min ago";
+    } elseif ($timeAgo < 86400) {
+        $timeAgoText = floor($timeAgo / 3600) . "h " . floor(($timeAgo % 3600) / 60) . "min ago";
+    } else {
+        $timeAgoText = floor($timeAgo / 86400) . " days ago";
+    }
+} else {
+    $timeAgoText = "N/A";
+    }*/
+    $motorLastOnTimeQuery = "SELECT TIMESTAMPDIFF(SECOND, timestamp, NOW()) AS timeAgo FROM sensor_data WHERE motorState = 1 ORDER BY timestamp DESC LIMIT 1";
+    /*$motorLastOnTimeQuery = "SELECT TIMESTAMPDIFF(SECOND, timestamp, NOW()) AS timeAgo 
+                         FROM sensor_data 
+                         WHERE motorState = 1 AND deviceID = ? 
+                         ORDER BY timestamp DESC 
+                         LIMIT 1";*/
+    $result = $conn->query($motorLastOnTimeQuery);
+
+    if ($result && $row = $result->fetch_assoc()) {
+        $timeAgo = $row['timeAgo'];
+
+        if ($timeAgo < 60) {
+            $timeAgoText = "$timeAgo seconds ago";
+        } elseif ($timeAgo < 3600) {
+            $timeAgoText = floor($timeAgo / 60) . " min ago";
+        } elseif ($timeAgo < 86400) {
+            $timeAgoText = floor($timeAgo / 3600) . "h " . floor(($timeAgo % 3600) / 60) . "min ago";
+        } else {
+            $timeAgoText = floor($timeAgo / 86400) . " days ago";
+        }
+    } else {
+    $timeAgoText = "N/A";
+    }
+
+    //echo "Motor last turned ON: $timeAgoText";
+
+    //print_r($result);
+    //$stmt = $conn->prepare($motorLastOnTimeQuery);
+    //$stmt->bind_param("s", $device_id);
+    //$stmt->execute();
+    //$motorLastOnTimeResult = $stmt->get_result();
+
+    $averageOnTime = "10:00:00";
+    $last24HourTotalOnTime  = "01:00:00";
     //////
     // Prepare the response
      $data = [
@@ -166,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ],
                 
             ],
-            'motor_last_on_time' => $motorLastOnTime ?? 'N/A',
+            'motor_last_on_time' => $timeAgoText ?? 'N/A',
             'average_on_time' => $averageOnTime,
             'last_24_hour_total_on_time' => $last24HourTotalOnTime,
             'MotorStatus' =>[
